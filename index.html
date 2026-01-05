@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShareDrop P2P - Material 3 Expressive</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- PeerJS (WebRTC Signaling) -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    
+    <!-- MQTT.js (Discovery Signal) -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+    <!-- QRCode.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- Google Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap" rel="stylesheet">
+    <!-- Material Symbols Rounded -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0..1,0" />
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Google Sans Flex', 'sans-serif'],
+                    },
+                    colors: {
+                        md: {
+                            sys: {
+                                primary: '#146c2e', // Green 700
+                                onPrimary: '#ffffff',
+                                container: '#dcf5d6', // Green 100
+                                onContainer: '#06210b',
+                                surface: '#fdfdfd',
+                                surfaceVariant: '#e0e5d1',
+                                outline: '#74796d',
+                                error: '#ba1a1a',
+                            }
+                        }
+                    },
+                    animation: {
+                        'radar-ping': 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #fbfdf8;
+            color: #191c19;
+            overflow-x: hidden;
+        }
+        
+        /* Material Symbols Utilities */
+        .material-symbols-rounded {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+            font-size: 24px; 
+        }
+        .icon-filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Material 3 Elevation & Shapes */
+        .card-expressive {
+            border-radius: 28px;
+            transition: all 0.3s cubic-bezier(0.2, 0.0, 0, 1.0);
+        }
+        
+        .card-expressive:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 8px 3px rgba(0,0,0,0.05);
+        }
+
+        .avatar-blob {
+            border-radius: 35% 65% 30% 70% / 60% 40% 60% 40%;
+            transition: all 0.5s ease;
+        }
+        .avatar-blob:hover {
+            border-radius: 50%;
+        }
+
+        .dashed-border {
+            background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='24' ry='24' stroke='%2374796DFF' stroke-width='2' stroke-dasharray='12%2c 12' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #dcf5d6;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #bcebc3;
+        }
+
+        /* Icon Animation Keyframes */
+        @keyframes icon-pop {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.4); }
+            100% { transform: scale(1); }
+        }
+        .animate-icon-pop {
+            animation: icon-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col items-center justify-between p-4 md:p-6 lg:p-8 relative">
+
+    <!-- Background Decoration -->
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+        <div class="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-green-200/20 rounded-full blur-[100px]"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-emerald-200/20 rounded-full blur-[100px]"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="w-full max-w-7xl flex justify-between items-center z-10 mb-4 lg:mb-6 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 lg:w-12 lg:h-12 bg-md-sys-primary text-white rounded-2xl flex items-center justify-center shadow-lg shadow-green-200">
+                <i class="ph ph-share-network text-xl lg:text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl lg:text-2xl font-semibold tracking-tight text-green-900">ShareDrop <span class="text-green-600/60 text-sm font-normal">Expressive</span></h1>
+                <p class="text-[10px] lg:text-xs text-gray-500">P2P File Transfer</p>
+            </div>
+        </div>
+        
+        <!-- My Identity -->
+        <div class="flex items-center gap-2 lg:gap-3 bg-white/60 backdrop-blur-md border border-white/50 px-3 py-1.5 lg:px-4 lg:py-2 rounded-full shadow-sm">
+            <div class="text-right hidden sm:block">
+                <p class="text-[10px] lg:text-xs text-gray-400 font-medium uppercase tracking-wider">Bạn là</p>
+                <p id="myName" class="text-xs lg:text-sm font-semibold text-green-800">Đang tạo...</p>
+            </div>
+            <div class="relative">
+                <div id="myAvatar" class="w-8 h-8 lg:w-10 lg:h-10 bg-green-100 rounded-full flex items-center justify-center text-lg lg:text-xl overflow-hidden border-2 border-white shadow-sm">
+                    ...
+                </div>
+                <div class="absolute bottom-0 right-0 w-2.5 h-2.5 lg:w-3 lg:h-3 bg-green-500 border-2 border-white rounded-full"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content: Conditional Layout -->
+    <!-- Mobile: Stacked/Hidden by Tab. Desktop (lg): Split Grid -->
+    <main class="flex-1 w-full max-w-7xl relative overflow-hidden pb-24 lg:pb-4 lg:grid lg:grid-cols-2 lg:gap-8 transition-all duration-300">
+        
+        <!-- VIEW 1: RADAR (MQTT SIGNAL) -->
+        <!-- Logic: Default visible on Mobile. Always visible on Desktop (lg:flex) -->
+        <div id="view-radar" class="flex flex-col h-full bg-white/40 backdrop-blur-sm rounded-[32px] border border-white/60 p-4 lg:p-6 relative overflow-y-auto lg:flex">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-lg lg:text-xl font-semibold text-green-900 flex items-center gap-2">
+                    <!-- Icon updated to Material Symbols -->
+                    <span class="material-symbols-rounded text-green-600 text-[28px]">radar</span>
+                    <span>Radar Mạng LAN</span>
+                </h2>
+                <!-- Label for Method 1 -->
+                <span class="text-[10px] lg:text-xs bg-blue-100 text-blue-800 px-2 lg:px-3 py-1 rounded-full font-medium border border-blue-200 flex items-center">
+                    <i class="ph-bold ph-broadcast mr-1"></i>MQTT
+                </span>
+            </div>
+
+            <!-- Status -->
+            <div class="text-center mb-6">
+                <h3 id="statusText" class="text-xl lg:text-2xl font-medium text-green-950 tracking-tight">
+                    Đang tìm thiết bị...
+                </h3>
+                <p class="text-xs lg:text-sm text-gray-500">Dùng MQTT để tìm nhau trong cùng mạng</p>
+            </div>
+
+            <!-- Peer Grid -->
+            <div id="peerGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 lg:gap-4 w-full">
+                <!-- Peers injected here -->
+            </div>
+            
+            <!-- Radar Animation -->
+            <div id="radarScanner" class="flex-1 flex flex-col items-center justify-center min-h-[200px] opacity-50">
+                <div class="relative flex items-center justify-center">
+                    <div class="absolute w-40 h-40 lg:w-48 lg:h-48 bg-green-100/50 rounded-full animate-radar-ping"></div>
+                    <div class="absolute w-28 h-28 lg:w-32 lg:h-32 bg-green-200/40 rounded-full animate-radar-ping" style="animation-delay: 0.5s"></div>
+                    <i class="ph ph-wifi-high text-3xl lg:text-4xl text-green-300"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: DIRECT QR (PEERJS SIGNAL) -->
+        <!-- Logic: Default hidden on Mobile. Always visible on Desktop (lg:flex) -->
+        <div id="view-direct" class="hidden flex-col h-full bg-white rounded-[32px] shadow-sm border border-green-100 p-4 lg:p-6 relative overflow-y-auto lg:flex">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-lg lg:text-xl font-semibold text-green-900 flex items-center gap-2">
+                    <i class="ph-fill ph-qr-code text-green-600"></i> Chia sẻ trực tiếp
+                </h2>
+                <!-- Label for Method 2 -->
+                <span class="text-[10px] lg:text-xs bg-orange-100 text-orange-800 px-2 lg:px-3 py-1 rounded-full font-medium border border-orange-200 flex items-center">
+                    <i class="ph-bold ph-arrows-left-right mr-1"></i>PeerJS
+                </span>
+            </div>
+
+            <div class="flex-1 flex flex-col items-center justify-center text-center">
+                
+                <!-- Upload Area -->
+                <div id="dropZone" class="w-full dashed-border rounded-[24px] p-6 lg:p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-green-50/50 transition-colors group mb-6 relative">
+                    <input type="file" id="directFileInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                    
+                    <div id="dropZoneContent" class="pointer-events-none transition-all duration-300">
+                        <div class="w-14 h-14 lg:w-16 lg:h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center text-2xl lg:text-3xl mb-3 mx-auto group-hover:scale-110 transition-transform">
+                            <i class="ph ph-upload-simple"></i>
+                        </div>
+                        <p class="text-base lg:text-lg font-medium text-gray-700">Chọn file để gửi</p>
+                        <p class="text-xs lg:text-sm text-gray-400">Không cần radar, chỉ cần quét mã</p>
+                    </div>
+
+                    <!-- Selected File State -->
+                    <div id="selectedFileView" class="hidden pointer-events-none w-full">
+                        <div class="bg-green-100/50 p-4 rounded-xl flex items-center gap-3 text-left">
+                            <div class="bg-white p-2 rounded-lg text-green-700 text-xl shadow-sm">
+                                <i class="ph-fill ph-file"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p id="directFileName" class="text-sm font-semibold text-gray-900 truncate">file.txt</p>
+                                <p id="directFileSize" class="text-xs text-gray-500">0 MB</p>
+                            </div>
+                            <div class="text-green-600">
+                                <i class="ph-fill ph-check-circle"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-green-600 mt-2 font-medium">Đã chọn file. Sẵn sàng tạo mã.</p>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <button id="btnGenerateQR" disabled onclick="generateQRCode()" class="w-full py-3 lg:py-4 rounded-full bg-gray-200 text-gray-400 font-semibold text-base lg:text-lg transition-all flex items-center justify-center gap-2 disabled:cursor-not-allowed data-[active=true]:bg-md-sys-primary data-[active=true]:text-white data-[active=true]:shadow-lg data-[active=true]:shadow-green-200 hover:data-[active=true]:bg-green-800">
+                    <i class="ph-bold ph-qr-code"></i>
+                    Tạo mã chia sẻ
+                </button>
+
+                <!-- QR Result -->
+                <div id="qrContainer" class="hidden mt-6 w-full flex flex-col items-center animate-[float_0.3s_ease-out]">
+                    <div class="bg-white p-4 rounded-2xl shadow-lg border border-gray-100 mb-4">
+                        <div id="qrcode"></div>
+                    </div>
+                    <p class="text-xs lg:text-sm text-gray-500 max-w-xs mx-auto">
+                        Người nhận dùng Camera quét mã này để kết nối thẳng tới bạn qua PeerJS.
+                    </p>
+                    <button onclick="resetDirectShare()" class="mt-4 text-xs lg:text-sm text-red-500 hover:text-red-700 font-medium">
+                        Hủy bỏ
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Bottom Navigation Bar (Visible only on Mobile < lg) -->
+    <nav class="fixed bottom-0 left-0 w-full bg-[#fbfdf8]/95 backdrop-blur-xl border-t border-green-100 px-6 py-3 lg:hidden flex justify-around items-center z-40 pb-6 safe-area-pb shadow-[0_-5px_20px_rgba(0,0,0,0.03)]">
+        
+        <!-- Tab Radar -->
+        <button onclick="switchTab('radar')" id="nav-btn-radar" class="flex flex-col items-center gap-1 w-20 group relative">
+            <div id="nav-indicator-radar" class="px-5 py-1.5 rounded-full bg-md-sys-container text-green-900 transition-all duration-300">
+                <!-- Icon updated to Material Symbols -->
+                <span id="nav-icon-radar" class="material-symbols-rounded icon-filled text-2xl">radar</span>
+            </div>
+            <span id="nav-text-radar" class="text-xs font-semibold text-green-900 transition-colors">Radar</span>
+        </button>
+
+        <!-- Tab Direct QR -->
+        <button onclick="switchTab('direct')" id="nav-btn-direct" class="flex flex-col items-center gap-1 w-20 group relative text-gray-400">
+            <div id="nav-indicator-direct" class="px-5 py-1.5 rounded-full bg-transparent text-gray-400 transition-all duration-300">
+                <i id="nav-icon-direct" class="ph ph-qr-code text-2xl"></i>
+            </div>
+            <span id="nav-text-direct" class="text-xs font-medium text-gray-400 transition-colors">Direct QR</span>
+        </button>
+    </nav>
+
+    <!-- Footer (Hidden on mobile to save space, visible on Desktop) -->
+    <footer class="w-full text-center py-2 text-gray-400 text-xs relative z-10 shrink-0 hidden lg:block">
+        <p>Bảo mật: File được truyền trực tiếp (P2P), không lưu trên Server.</p>
+    </footer>
+
+    <!-- Hidden Input for Radar Mode -->
+    <input type="file" id="radarFileInput" class="hidden">
+
+    <!-- Modal: Incoming File Request -->
+    <div id="incomingModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-[#fbfdf8] w-full max-w-sm p-6 rounded-[32px] shadow-2xl border border-white transform scale-95 transition-transform duration-300 m-4" id="incomingModalContent">
+            <div class="flex flex-col items-center text-center">
+                <div class="w-16 h-16 bg-green-100 text-green-700 rounded-full flex items-center justify-center mb-4 text-3xl">
+                    <i class="ph ph-file-arrow-down"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-800 mb-1">Nhận file?</h3>
+                <p class="text-sm text-gray-500 mb-6">
+                    <span id="senderName" class="font-bold text-green-700">Ai đó</span> muốn gửi:
+                </p>
+                
+                <div class="bg-gray-50 w-full p-4 rounded-2xl mb-6 border border-gray-100">
+                    <p id="fileName" class="text-sm font-medium text-gray-800 truncate">document.pdf</p>
+                    <p id="fileSize" class="text-xs text-gray-500 mt-1">2.4 MB</p>
+                </div>
+
+                <div class="flex gap-3 w-full">
+                    <button onclick="declineFile()" class="flex-1 py-3 px-6 rounded-full border border-gray-300 text-gray-600 font-medium hover:bg-gray-50 transition-colors">
+                        Từ chối
+                    </button>
+                    <button onclick="acceptFile()" class="flex-1 py-3 px-6 rounded-full bg-md-sys-primary text-white font-medium hover:bg-green-800 shadow-lg shadow-green-200 transition-all">
+                        Chấp nhận
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Sending Progress -->
+    <div id="progressModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm hidden">
+        <div class="bg-white w-full max-w-sm p-6 rounded-[32px] shadow-2xl m-4">
+            <h3 id="progressTitle" class="text-lg font-semibold text-gray-800 mb-4">Đang gửi...</h3>
+            <div class="w-full bg-gray-100 rounded-full h-2.5 mb-2 overflow-hidden">
+                <div id="progressBar" class="bg-md-sys-primary h-2.5 rounded-full" style="width: 0%"></div>
+            </div>
+            <p id="progressText" class="text-xs text-gray-500 text-right">0%</p>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-24 lg:bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none z-50 flex items-center gap-2 w-max max-w-[90%]">
+        <i class="ph ph-info"></i>
+        <span id="toastMsg">Thông báo</span>
+    </div>
+
+    <script>
+        // --- MOBILE TAB LOGIC ---
+        let currentTab = 'radar';
+
+        function switchTab(tab) {
+            currentTab = tab;
+            const radarView = document.getElementById('view-radar');
+            const directView = document.getElementById('view-direct');
+            
+            const navRadar = {
+                btn: document.getElementById('nav-btn-radar'),
+                indicator: document.getElementById('nav-indicator-radar'),
+                icon: document.getElementById('nav-icon-radar'),
+                text: document.getElementById('nav-text-radar')
+            };
+            
+            const navDirect = {
+                btn: document.getElementById('nav-btn-direct'),
+                indicator: document.getElementById('nav-indicator-direct'),
+                icon: document.getElementById('nav-icon-direct'),
+                text: document.getElementById('nav-text-direct')
+            };
+
+            // Reset animation classes to allow re-triggering
+            navRadar.icon.classList.remove('animate-icon-pop');
+            navDirect.icon.classList.remove('animate-icon-pop');
+
+            // Logic Visiblity (Chỉ ảnh hưởng Mobile, Desktop dùng lg:flex override)
+            if (tab === 'radar') {
+                radarView.classList.remove('hidden');
+                radarView.classList.add('flex');
+                directView.classList.add('hidden');
+                directView.classList.remove('flex');
+                
+                // Update Nav Style - Radar Active (Material Symbol)
+                navRadar.indicator.classList.remove('bg-transparent', 'text-gray-400');
+                navRadar.indicator.classList.add('bg-md-sys-container', 'text-green-900');
+                
+                navRadar.icon.classList.add('icon-filled'); // Bật chế độ tô đặc (fill) cho material symbol
+                
+                navRadar.text.classList.remove('text-gray-400', 'font-medium');
+                navRadar.text.classList.add('text-green-900', 'font-semibold');
+
+                // Trigger Animation for Radar
+                void navRadar.icon.offsetWidth; // Force Reflow
+                navRadar.icon.classList.add('animate-icon-pop');
+
+                // Inactive Direct (Phosphor)
+                setInactiveNav(navDirect, 'ph', 'ph-qr-code');
+
+            } else {
+                radarView.classList.add('hidden');
+                radarView.classList.remove('flex');
+                directView.classList.remove('hidden');
+                directView.classList.add('flex');
+
+                // Update Nav Style - Direct Active (Phosphor)
+                setActiveNav(navDirect, 'ph-bold', 'ph-qr-code');
+
+                // Trigger Animation for Direct
+                void navDirect.icon.offsetWidth; // Force Reflow
+                navDirect.icon.classList.add('animate-icon-pop');
+
+                // Inactive Radar (Material Symbol)
+                navRadar.indicator.classList.remove('bg-md-sys-container', 'text-green-900');
+                navRadar.indicator.classList.add('bg-transparent', 'text-gray-400');
+                
+                navRadar.icon.classList.remove('icon-filled'); // Tắt chế độ tô đặc
+                
+                navRadar.text.classList.remove('text-green-900', 'font-semibold');
+                navRadar.text.classList.add('text-gray-400', 'font-medium');
+            }
+        }
+
+        // Helper for Phosphor Icons (Direct QR Tab)
+        function setActiveNav(nav, iconType, iconName) {
+            nav.indicator.classList.remove('bg-transparent', 'text-gray-400');
+            nav.indicator.classList.add('bg-md-sys-container', 'text-green-900');
+            
+            nav.icon.className = `${iconType} ${iconName} text-2xl`;
+            
+            nav.text.classList.remove('text-gray-400', 'font-medium');
+            nav.text.classList.add('text-green-900', 'font-semibold');
+        }
+
+        function setInactiveNav(nav, iconType, iconName) {
+            nav.indicator.classList.remove('bg-md-sys-container', 'text-green-900');
+            nav.indicator.classList.add('bg-transparent', 'text-gray-400');
+            
+            nav.icon.className = `${iconType} ${iconName} text-2xl`;
+            
+            nav.text.classList.remove('text-green-900', 'font-semibold');
+            nav.text.classList.add('text-gray-400', 'font-medium');
+        }
+
+        // --- EXISTING LOGIC BELOW ---
+
+        // --- CONFIGURATION ---
+        const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
+        const MQTT_TOPIC_DISCOVERY = 'sharedrop/vn/expressive/v3';
+        
+        // --- STATE ---
+        let myId = null;
+        let myName = '';
+        let myAvatarIcon = '';
+        let peer = null;
+        let mqttClient = null;
+        let discoveredPeers = {}; 
+        let incomingTransfer = null; 
+        
+        // State for Radar Mode
+        let radarSelectedPeerId = null;
+
+        // State for Direct QR Mode
+        let directShareFile = null;
+
+        // --- IDENTITY GEN ---
+        const animals = ['Mèo', 'Cún', 'Gấu', 'Hổ', 'Cáo', 'Sóc', 'Thỏ', 'Vịt', 'Cú', 'Ong'];
+        const adjectives = ['Vui Vẻ', 'Nhanh Nhẹn', 'Thông Thái', 'Dũng Cảm', 'Lạnh Lùng', 'Đáng Yêu'];
+        const emojis = ['🐱', '🐶', '🐻', '🐯', '🦊', '🐿️', '🐰', '🦆', '🦉', '🐝'];
+        
+        function generateIdentity() {
+            const idx = Math.floor(Math.random() * animals.length);
+            const adjIdx = Math.floor(Math.random() * adjectives.length);
+            myName = `${animals[idx]} ${adjectives[adjIdx]}`;
+            myAvatarIcon = emojis[idx];
+            
+            document.getElementById('myName').innerText = myName;
+            document.getElementById('myAvatar').innerText = myAvatarIcon;
+        }
+
+        // --- INIT ---
+        window.addEventListener('load', () => {
+            generateIdentity();
+            initPeerJS();
+            setupDirectShareUI();
+            
+            // Nếu mở bằng QR, tự động chuyển sang tab Direct để thấy trạng thái kết nối (Optional UX)
+            // checkUrlForDirectConnection() sẽ handle logic
+        });
+
+        // --- PEERJS SETUP ---
+        function initPeerJS() {
+            peer = new Peer({ debug: 1 });
+
+            peer.on('open', (id) => {
+                myId = id;
+                console.log('My Peer ID:', id);
+                showToast('Đã kết nối P2P Network');
+                
+                // CÁCH 1: Khởi động MQTT để bắt sóng Radar
+                initMQTT();
+
+                // CÁCH 2: Kiểm tra URL xem có phải đang bắt sóng từ QR không
+                checkUrlForDirectConnection();
+            });
+
+            // Lắng nghe kết nối đến (Dùng cho cả 2 cách)
+            peer.on('connection', (conn) => {
+                handleConnection(conn);
+            });
+
+            peer.on('error', (err) => {
+                console.error(err);
+                showToast('Lỗi PeerJS: ' + err.type);
+            });
+        }
+
+        // --- MQTT DISCOVERY (CÁCH 1: BẮT SIGNAL BẰNG MQTT) ---
+        function initMQTT() {
+            mqttClient = mqtt.connect(MQTT_BROKER);
+            mqttClient.on('connect', () => {
+                console.log('MQTT Connected');
+                mqttClient.subscribe(MQTT_TOPIC_DISCOVERY);
+                broadcastPresence();
+                setInterval(broadcastPresence, 3000);
+            });
+
+            mqttClient.on('message', (topic, message) => {
+                if (topic === MQTT_TOPIC_DISCOVERY) {
+                    try {
+                        const data = JSON.parse(message.toString());
+                        if (data.id !== myId) {
+                            discoveredPeers[data.id] = { ...data, lastSeen: Date.now() };
+                            updatePeerGrid();
+                        }
+                    } catch (e) { console.error(e); }
+                }
+            });
+        }
+
+        function broadcastPresence() {
+            if (!myId || !mqttClient) return;
+            const payload = JSON.stringify({
+                type: 'presence',
+                id: myId,
+                name: myName,
+                avatar: myAvatarIcon
+            });
+            mqttClient.publish(MQTT_TOPIC_DISCOVERY, payload);
+        }
+
+        function updatePeerGrid() {
+            const now = Date.now();
+            let activeCount = 0;
+            const grid = document.getElementById('peerGrid');
+
+            Object.keys(discoveredPeers).forEach(id => {
+                if (now - discoveredPeers[id].lastSeen > 6000) {
+                    delete discoveredPeers[id];
+                    const el = document.getElementById(`peer-${id}`);
+                    if (el) el.remove();
+                } else {
+                    activeCount++;
+                    renderPeerCard(discoveredPeers[id]);
+                }
+            });
+
+            const scanner = document.getElementById('radarScanner');
+            const status = document.getElementById('statusText');
+            
+            if (activeCount > 0) {
+                scanner.classList.add('hidden');
+                status.innerText = `Tìm thấy ${activeCount} thiết bị`;
+            } else {
+                scanner.classList.remove('hidden');
+                status.innerText = "Đang tìm thiết bị...";
+            }
+        }
+
+        function renderPeerCard(peerData) {
+            let card = document.getElementById(`peer-${peerData.id}`);
+            if (!card) {
+                const grid = document.getElementById('peerGrid');
+                card = document.createElement('div');
+                card.id = `peer-${peerData.id}`;
+                card.className = "card-expressive bg-white p-4 flex flex-col items-center justify-center cursor-pointer border border-gray-100 hover:border-green-300 group";
+                card.onclick = () => onRadarPeerClick(peerData.id);
+
+                card.innerHTML = `
+                    <div class="relative mb-3">
+                        <div class="w-14 h-14 bg-green-50 text-2xl flex items-center justify-center avatar-blob text-green-800">
+                            ${peerData.avatar}
+                        </div>
+                        <div class="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                    </div>
+                    <h3 class="font-medium text-gray-800 text-sm truncate w-full text-center">${peerData.name}</h3>
+                `;
+                grid.appendChild(card);
+            }
+        }
+
+        // --- DIRECT SHARE UI (CÁCH 2) ---
+        function setupDirectShareUI() {
+            const fileInput = document.getElementById('directFileInput');
+            const dropZone = document.getElementById('dropZone');
+            
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) handleDirectFileSelect(file);
+            });
+        }
+
+        function handleDirectFileSelect(file) {
+            directShareFile = file;
+            
+            // Update UI
+            document.getElementById('dropZoneContent').classList.add('hidden');
+            document.getElementById('selectedFileView').classList.remove('hidden');
+            document.getElementById('directFileName').innerText = file.name;
+            document.getElementById('directFileSize').innerText = formatBytes(file.size);
+            
+            const btn = document.getElementById('btnGenerateQR');
+            btn.disabled = false;
+            btn.dataset.active = "true";
+        }
+
+        function generateQRCode() {
+            if (!directShareFile || !myId) return;
+
+            // Link này chứa PeerID của Sender
+            const baseUrl = window.location.href.split('?')[0];
+            const directLink = `${baseUrl}?connectTo=${myId}&senderName=${encodeURIComponent(myName)}`;
+            
+            const qrContainer = document.getElementById('qrContainer');
+            const qrcodeDiv = document.getElementById('qrcode');
+            qrcodeDiv.innerHTML = ''; 
+
+            new QRCode(qrcodeDiv, {
+                text: directLink,
+                width: 180,
+                height: 180,
+                colorDark : "#146c2e",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+
+            qrContainer.classList.remove('hidden');
+            document.getElementById('btnGenerateQR').classList.add('hidden');
+            document.getElementById('dropZone').classList.add('hidden');
+            
+            showToast('Đã tạo mã QR. Chờ PeerJS bắt tín hiệu...');
+        }
+
+        function resetDirectShare() {
+            directShareFile = null;
+            document.getElementById('directFileInput').value = '';
+            
+            document.getElementById('qrContainer').classList.add('hidden');
+            document.getElementById('dropZone').classList.remove('hidden');
+            document.getElementById('dropZoneContent').classList.remove('hidden');
+            document.getElementById('selectedFileView').classList.add('hidden');
+            
+            const btn = document.getElementById('btnGenerateQR');
+            btn.classList.remove('hidden');
+            btn.disabled = true;
+            btn.dataset.active = "false";
+        }
+
+        // --- PEERJS SIGNAL LOGIC (CÁCH 2: BẮT SIGNAL TỪ QR) ---
+        function checkUrlForDirectConnection() {
+            const params = new URLSearchParams(window.location.search);
+            const targetId = params.get('connectTo');
+            const senderNameArg = params.get('senderName');
+
+            if (targetId && targetId !== myId) {
+                // Auto switch tab to Direct on Mobile to see status
+                if (window.innerWidth < 1024) switchTab('direct');
+
+                // Receiver (người quét QR) chủ động phát tín hiệu PeerJS đến Sender
+                showToast(`Đang bắt tín hiệu PeerJS tới ${senderNameArg || 'thiết bị gửi'}...`);
+                showProgressModal(`Kết nối tới ${senderNameArg || 'Sender'}`, 0);
+
+                const conn = peer.connect(targetId, {
+                    metadata: { type: 'qr-init', name: myName }
+                });
+
+                conn.on('open', () => {
+                    hideProgressModal();
+                    showToast('Kết nối thành công! Đang chờ file...');
+                    // Gửi tin nhắn chào để báo Sender biết
+                    conn.send({ type: 'qr-hello', name: myName });
+                });
+
+                conn.on('error', (err) => {
+                    hideProgressModal();
+                    alert('Không thể kết nối. PeerJS ID không tồn tại hoặc Offline.');
+                });
+                
+                handleConnection(conn);
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+
+        // --- SHARED CONNECTION HANDLER ---
+        function handleConnection(conn) {
+            // Hàm này xử lý kết nối từ cả 2 nguồn: MQTT Radar hoặc QR Direct
+            
+            conn.on('open', () => {
+                // [CÁCH 2 - LOGIC SENDER]
+                // Bắt được tín hiệu PeerJS từ Receiver (người vừa quét QR)
+                // Sender không cần làm gì, chỉ ngồi chờ event này kích hoạt
+                if (conn.metadata && conn.metadata.type === 'qr-init') {
+                    console.log("Method 2: Caught PeerJS Signal from QR Scan");
+                    if (directShareFile) {
+                        showToast(`Bắt được tín hiệu từ ${conn.metadata.name}!`);
+                        // Tự động gửi Offer file
+                        sendOffer(conn, directShareFile);
+                    }
+                }
+            });
+
+            conn.on('data', (data) => {
+                // [CÁCH 2 - LOGIC SENDER] Backup handshake
+                if (data.type === 'qr-hello') {
+                     if (directShareFile) sendOffer(conn, directShareFile);
+                }
+                
+                // [RECEIVER] Nhận Offer (Chung cho cả 2 cách)
+                if (data.type === 'file-offer') {
+                    incomingTransfer = { conn, metadata: data };
+                    
+                    // Nếu là QR mode, tên Sender có thể lấy từ URL hoặc discovery map
+                    const displayName = discoveredPeers[conn.peer]?.name || "Thiết bị gửi";
+                    document.getElementById('senderName').innerText = displayName;
+                    
+                    showIncomingModal(data);
+                }
+
+                // [RECEIVER] Nhận Data
+                if (data.type === 'file-data') {
+                    handleReceivedFile(data.file, incomingTransfer.metadata);
+                }
+
+                // [SENDER] Nhận phản hồi chấp nhận
+                if (data.type === 'file-accepted') {
+                    // Chọn file đúng để gửi (từ Direct hay từ Radar)
+                    const fileToSend = directShareFile || document.getElementById('radarFileInput').files[0];
+                    if (fileToSend) {
+                        startSendingData(conn, fileToSend);
+                    }
+                }
+                if (data.type === 'file-declined') {
+                    showToast('Bị từ chối');
+                    hideProgressModal();
+                    conn.close();
+                }
+            });
+        }
+
+        // --- CÁCH 1: CLICK TỪ RADAR (SENDER) ---
+        function onRadarPeerClick(targetId) {
+            radarSelectedPeerId = targetId;
+            document.getElementById('radarFileInput').click();
+        }
+        
+        document.getElementById('radarFileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file && radarSelectedPeerId) {
+                // Sender chủ động kết nối dựa trên ID tìm thấy qua MQTT
+                const conn = peer.connect(radarSelectedPeerId);
+                conn.on('open', () => {
+                    sendOffer(conn, file);
+                });
+                handleConnection(conn);
+            }
+            e.target.value = '';
+        });
+
+        // --- CORE TRANSFER FUNCTIONS ---
+        function sendOffer(conn, file) {
+            showProgressModal("Đang chờ chấp nhận...", 0);
+            conn.send({
+                type: 'file-offer',
+                name: file.name,
+                size: file.size,
+                mime: file.type
+            });
+        }
+
+        function startSendingData(conn, file) {
+            showProgressModal("Đang gửi file...", 0);
+            
+            conn.send({
+                type: 'file-data',
+                file: file 
+            });
+
+            let p = 0;
+            const intv = setInterval(() => {
+                p += 5;
+                if (p > 95) clearInterval(intv);
+                updateProgress(p, 'Đang truyền...');
+            }, 50);
+
+            setTimeout(() => {
+                updateProgress(100, 'Hoàn tất!');
+                setTimeout(() => {
+                    hideProgressModal();
+                    if (directShareFile) resetDirectShare(); 
+                }, 1000);
+            }, 1000); 
+        }
+
+        // --- UI UTILS ---
+        function showIncomingModal(metadata) {
+            const modal = document.getElementById('incomingModal');
+            document.getElementById('fileName').innerText = metadata.name;
+            document.getElementById('fileSize').innerText = formatBytes(metadata.size);
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+            document.getElementById('incomingModalContent').classList.remove('scale-95');
+        }
+
+        function acceptFile() {
+            document.getElementById('incomingModal').classList.add('hidden');
+            showProgressModal("Đang tải xuống...", 50);
+            if (incomingTransfer) {
+                incomingTransfer.conn.send({ type: 'file-accepted' });
+            }
+        }
+
+        function declineFile() {
+            document.getElementById('incomingModal').classList.add('hidden');
+            if (incomingTransfer) {
+                incomingTransfer.conn.send({ type: 'file-declined' });
+                incomingTransfer.conn.close();
+            }
+        }
+
+        function handleReceivedFile(fileBlob, metadata) {
+            const blob = new Blob([fileBlob], { type: metadata.mime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = metadata.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            hideProgressModal();
+            showToast(`Đã nhận xong: ${metadata.name}`);
+            incomingTransfer.conn.close();
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (!+bytes) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('opacity-0');
+            toast.style.transform = "translate(-50%, 0)";
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                toast.style.transform = "translate(-50%, 20px)";
+            }, 3000);
+        }
+
+        function showProgressModal(title, percent) {
+            const modal = document.getElementById('progressModal');
+            document.getElementById('progressTitle').innerText = title;
+            updateProgress(percent);
+            modal.classList.remove('hidden');
+        }
+
+        function updateProgress(percent, text) {
+            document.getElementById('progressBar').style.width = `${percent}%`;
+            document.getElementById('progressText').innerText = text || `${percent}%`;
+        }
+
+        function hideProgressModal() {
+            document.getElementById('progressModal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
